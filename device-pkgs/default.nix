@@ -68,6 +68,11 @@ let
     meta.platforms = [ "x86_64-linux" ];
   };
 
+  # Exposed as pkgs.nvidia-jetpack.forceXusbPeripheralDtbo so downstream RCM-boot
+  # flows built with mkRcmBootScript can bring up a USB gadget the same way
+  # initrdFlashScript does.
+  forceXusbPeripheralDtbo = import ./force-xusb-peripheral-dtbo.nix { inherit config lib l4tMajorMinorPatchVersion writeText deviceTree; };
+
   # Produces a script that boots a given kernel, initrd, and cmdline using the RCM boot method.
   mkRcmBootScript = { kernelPath, initrdPath, kernelCmdline, ... }@args: mkFlashScriptAuto (
     builtins.removeAttrs args [ "kernelPath" "initrdPath" "kernelCmdline" ] // {
@@ -138,7 +143,7 @@ let
   initrdFlashScript =
     writeShellApplication {
       name = "initrd-flash-${cfg.name}";
-      text = import ./initrdflash-script.nix { inherit mkRcmBootScript config flashInitrd lib l4tMajorMinorPatchVersion writeText deviceTree tio expect; };
+      text = import ./initrdflash-script.nix { inherit mkRcmBootScript forceXusbPeripheralDtbo config flashInitrd lib writeText tio expect; };
       meta.platforms = [ "x86_64-linux" ];
     };
 
@@ -234,7 +239,7 @@ let
     '';
 in
 {
-  inherit initrdFlashScript legacyFlashScript fuseScript rcmBoot pkcListComboHash mkRcmBootScript;
+  inherit initrdFlashScript legacyFlashScript fuseScript rcmBoot pkcListComboHash mkRcmBootScript forceXusbPeripheralDtbo;
   flashScript = initrdFlashScript;
 }
   // (lib.optionalAttrs cfg.firmware.fskp.enable { inherit fskpFuseScript; })
