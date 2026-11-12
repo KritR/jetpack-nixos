@@ -75,8 +75,21 @@ let
   };
 
   # Produces a script that boots a given kernel, initrd, and cmdline using the RCM boot method.
-  mkRcmBootScript = { kernelPath, initrdPath, kernelCmdline, ... }@args: mkFlashScriptAuto (
-    builtins.removeAttrs args [ "kernelPath" "initrdPath" "kernelCmdline" ] // {
+  # Exported as pkgs.nvidia-jetpack.mkRcmBootScript for custom RCM boot flows. It
+  # returns the script's text (e.g. for writeShellApplication); arguments other
+  # than the ones below are passed through to mkFlashScript.
+  #
+  # Set forceUsbPeripheral to force the recovery USB port into peripheral mode,
+  # so the booted system can present a USB gadget to the host even on carrier
+  # boards that don't support OTG. The overlay is appended to
+  # additionalDtbOverlays (which defaults to
+  # flashScriptOverrides.additionalDtbOverlays) rather than replacing it.
+  mkRcmBootScript = { kernelPath, initrdPath, kernelCmdline, forceUsbPeripheral ? false, ... }@args: mkFlashScriptAuto (
+    builtins.removeAttrs args [ "kernelPath" "initrdPath" "kernelCmdline" "forceUsbPeripheral" ]
+    // lib.optionalAttrs forceUsbPeripheral {
+      additionalDtbOverlays = (args.additionalDtbOverlays or cfg.flashScriptOverrides.additionalDtbOverlays) ++ [ forceXusbPeripheralDtbo ];
+    }
+    // {
       preFlashCommands = ''
         cp ${kernelPath} kernel/Image
         cp ${initrdPath} bootloader/l4t_initrd.img
@@ -144,7 +157,7 @@ let
   initrdFlashScript =
     writeShellApplication {
       name = "initrd-flash-${cfg.name}";
-      text = import ./initrdflash-script.nix { inherit mkRcmBootScript forceXusbPeripheralDtbo config flashInitrd lib writeText tio expect; };
+      text = import ./initrdflash-script.nix { inherit mkRcmBootScript config flashInitrd lib writeText tio expect; };
       meta.platforms = [ "x86_64-linux" ];
     };
 

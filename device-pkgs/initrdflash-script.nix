@@ -1,5 +1,4 @@
 { mkRcmBootScript
-, forceXusbPeripheralDtbo
 , config
 , flashInitrd
 , lib
@@ -36,7 +35,9 @@ let
     # configured in nix) in there and is not affected dynamically during
     # the flashing procedure. NVIDIA ensures that when the device is
     # using RCM boot, only the boot mode named "boot.img" is used (see https://gist.github.com/jmbaur/1ca79436e69eadc0a38ec0b43b16cb2f#file-flash-sh-L1675).
-    additionalDtbOverlays = (lib.filter (path: (path.name or "") != "DefaultBootOrder.dtbo") cfg.flashScriptOverrides.additionalDtbOverlays) ++ [ forceXusbPeripheralDtbo ];
+    additionalDtbOverlays = lib.filter (path: (path.name or "") != "DefaultBootOrder.dtbo") cfg.flashScriptOverrides.additionalDtbOverlays;
+    # The flashing initrd talks to the host over a USB gadget.
+    forceUsbPeripheral = true;
   };
 
   expectScript = writeText "expect-initrd-flash" ''
