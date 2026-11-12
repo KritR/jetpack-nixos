@@ -14,7 +14,6 @@
 , runCommand
 , buildPackages
 , writeText
-, deviceTree
 , tio
 , expect
 }:
@@ -66,6 +65,13 @@ let
     name = "flash-${cfg.name}";
     text = (mkFlashScriptAuto { });
     meta.platforms = [ "x86_64-linux" ];
+  };
+
+  # A .dtbo is architecture-independent data, so build it on the device
+  # configuration's build platform instead of tying it to the x86_64 flasher.
+  forceXusbPeripheralDtbo = pkgs.buildPackages.callPackage ./force-xusb-peripheral-dtbo.nix {
+    inherit (cfg) som;
+    inherit l4tMajorMinorPatchVersion;
   };
 
   # Produces a script that boots a given kernel, initrd, and cmdline using the RCM boot method.
@@ -138,7 +144,7 @@ let
   initrdFlashScript =
     writeShellApplication {
       name = "initrd-flash-${cfg.name}";
-      text = import ./initrdflash-script.nix { inherit mkRcmBootScript config flashInitrd lib l4tMajorMinorPatchVersion writeText deviceTree tio expect; };
+      text = import ./initrdflash-script.nix { inherit mkRcmBootScript forceXusbPeripheralDtbo config flashInitrd lib writeText tio expect; };
       meta.platforms = [ "x86_64-linux" ];
     };
 
